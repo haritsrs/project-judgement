@@ -36,9 +36,35 @@ for ($i = 1; $i <= 6; $i++) {
 // Determine the personality type with the highest score
 $maxPersonality = array_keys($scores, max($scores))[0];
 
-// Display the results
+// Array with descriptions and corresponding image paths for each personality type
+$descriptions = [
+    "NR" => ["You are a Nerd! Thoughtful, introspective, and passionate about knowledge.", "images/NR.png"],
+    "WB" => ["You are a Wibu! You have a deep interest in anime and Japanese culture.", "images/WB.png"],
+    "SB" => ["You are a Softboy! Gentle, caring, and maybe a bit artistic.", "images/SB.png"],
+    "JM" => ["You are a Jamet! Bold, carefree, and fashion-forward.", "images/JM.png"],
+    "SN" => ["You are a Skena! Trendy and well-connected in the social scene.", "images/SN.png"],
+    "BB" => ["You are a Badboy! Confident and charismatic with a rebellious side.", "images/BB.png"],
+    "SR" => ["You are a Starboy! Classy, stylish, and elegant.", "images/SR.png"]
+];
+
+// Fetch the description and image for the highest-scoring personality type
+$resultDescription = $descriptions[$maxPersonality][0];
+$resultImage = $descriptions[$maxPersonality][1];
+
+// Display the result with the image and description
 echo "<h1>Quiz Results</h1>";
+echo "<div style='display: flex; align-items: center;'>";
+
+// Display the image
+echo "<img src='$resultImage' alt='$maxPersonality Image' style='width: 150px; height: 150px; margin-right: 20px;'>";
+
+// Display the description
+echo "<div>";
 echo "<p>Your personality type is: <strong>$maxPersonality</strong></p>";
+echo "<p>$resultDescription</p>";
+echo "</div>";
+
+echo "</div>";
 
 // Display detailed scores for each personality type
 echo "<h2>Score Breakdown:</h2>";
@@ -47,16 +73,4 @@ foreach ($scores as $type => $score) {
     echo "<li>$type: $score points</li>";
 }
 echo "</ul>";
-
-// Display a description based on the result
-$descriptions = [
-    "NR" => "You are a Nerd! Thoughtful, introspective, and passionate about knowledge.",
-    "WB" => "You are a Wibu! You have a deep interest in anime and Japanese culture.",
-    "SB" => "You are a Softboy! Gentle, caring, and maybe a bit artistic.",
-    "JM" => "You are a Jamet! Bold, carefree, and fashion-forward.",
-    "SN" => "You are a Skena! Trendy and well-connected in the social scene.",
-    "BB" => "You are a Badboy! Confident and charismatic with a rebellious side.",
-    "SR" => "You are a Starboy! Classy, stylish, and elegant."
-];
-echo "<p>" . $descriptions[$maxPersonality] . "</p>";
 ?>
