@@ -1,39 +1,64 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';  // Changed from next/router
 import Image from 'next/image';
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const LandingPage = () => {
-  const [isLoaded, setIsLoaded] = useState(false);
+  const router = useRouter();
+  const [isExiting, setIsExiting] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);  // Added missing state
 
   useEffect(() => {
+    // Trigger loaded animation on mount
     setIsLoaded(true);
   }, []);
 
-  const handleStart = () => {
-    // Add your navigation or action logic here
-    console.log('Start clicked');
+  const handleStart = async () => {
+    setIsExiting(true);
+
+    // Wait for the fade-out animation before navigating
+    await delay(2000);
+
+    // Navigate to the next page
+    router.push('/quiz'); // This now uses the new router
   };
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
+      {/* Fade-to-black Overlay */}
+      <div 
+        className={`absolute inset-0 bg-black z-50 transition-opacity duration-2000 pointer-events-none
+                   ${isExiting ? 'opacity-100' : 'opacity-0'}`}
+      />
+
       {/* Background Video */}
       <video 
         autoPlay 
         loop 
         muted 
         playsInline
-        className="absolute top-0 left-0 w-full h-full object-cover"
+        className={`absolute top-0 left-0 w-full h-full object-cover
+                   transition-opacity duration-1000
+                   ${isExiting ? 'opacity-0' : 'opacity-100'}`}
       >
         <source src="/placeholder-video.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
 
-      {/* Overlay to make video darker and ensure text is readable */}
-      <div className="absolute top-0 left-0 w-full h-full bg-black/50" />
+      {/* Overlay to Darken Video */}
+      <div className={`absolute top-0 left-0 w-full h-full bg-black/50
+                      transition-opacity duration-1000
+                      ${isExiting ? 'opacity-0' : 'opacity-100'}`} 
+      />
 
       {/* Content Container */}
-      <div className={`relative z-10 h-full flex flex-col items-center justify-center space-y-8 transition-opacity duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`relative z-10 h-full flex flex-col items-center justify-center space-y-8
+                      fade-in ${isLoaded ? 'fade-in-loaded' : ''}
+                      ${isExiting ? 'opacity-0 scale-95' : ''}`}
+      >
         {/* Title Image */}
         <div className="w-full max-w-2xl px-4">
           <Image
@@ -52,7 +77,9 @@ const LandingPage = () => {
                    backdrop-blur-md bg-white/10 border border-white/20 rounded-full
                    hover:bg-white/20 hover:border-white/30 hover:scale-105
                    transition-all duration-300 ease-out
-                   shadow-[0_8px_32px_0_rgba(31,38,135,0.37)]"
+                   shadow-[0_8px_32px_0_rgba(31,38,135,0.37)]
+                   disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isExiting}
         >
           {/* Button Glow Effect */}
           <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-300/30 to-purple-300/30 blur-xl 
