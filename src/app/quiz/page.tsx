@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../../../firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 // Color theme configuration
 const THEME = {
@@ -53,8 +54,58 @@ const QUIZ_QUESTIONS = [
     options: ['<200', '200-900', '900-3000', '3000+']
   }
 ];
+const BackgroundVideo = () => {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) return null;
+
+  return (
+    <video 
+      className="w-full h-full object-cover"
+      autoPlay
+      loop
+      muted
+      playsInline
+    >
+      <source src="/background.mp4" type="video/mp4" />
+    </video>
+  );
+};
+
+const BackgroundScene = ({ currentPage }: { currentPage: number }) => {
+  return (
+    <motion.div 
+      className="fixed inset-0"
+      animate={{
+        backgroundColor: [
+          'rgba(147, 51, 234, 0.5)',  // purple
+          'rgba(236, 72, 153, 0.5)',   // pink
+          'rgba(96, 165, 250, 0.5)'    // blue
+        ][currentPage % 3]
+      }}
+      transition={{ duration: 0.8 }}
+    >
+      <div className="absolute inset-0">
+        <BackgroundVideo />
+      </div>
+      <div className="absolute inset-0 bg-black/20" />
+    </motion.div>
+  );
+};
 
 const VideoAvatar = ({ videoName }: { videoName: string }) => {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) return null;
+
   return (
     <motion.div 
       className="w-64 h-64 rounded-full overflow-hidden"
@@ -75,7 +126,6 @@ const VideoAvatar = ({ videoName }: { videoName: string }) => {
         playsInline
       >
         <source src={`/${videoName}`} type="video/mp4" />
-        Your browser does not support the video tag.
       </video>
     </motion.div>
   );
@@ -182,36 +232,11 @@ const QuizBox = ({
   );
 };
 
-const BackgroundScene = ({ currentPage }: { currentPage: number }) => {
-  return (
-    <motion.div 
-      className="fixed inset-0"
-      animate={{
-        backgroundColor: [
-          'rgba(147, 51, 234, 0.5)',  // purple
-          'rgba(236, 72, 153, 0.5)',   // pink
-          'rgba(96, 165, 250, 0.5)'    // blue
-        ][currentPage % 3]
-      }}
-      transition={{ duration: 0.8 }}
-    >
-      <div className="absolute inset-0">
-        <video 
-          className="w-full h-full object-cover"
-          autoPlay
-          loop
-          muted
-          playsInline
-        >
-          <source src="/background.mp4" type="video/mp4" />
-        </video>
-      </div>
-      <div className="absolute inset-0 bg-black/20" />
-    </motion.div>
-  );
-};
-
 export default function Home() {
+  const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [showResultButton, setShowResultButton] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -219,8 +244,38 @@ export default function Home() {
   const [timeLeft, setTimeLeft] = useState(10);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
 
+  // Handle client-side mounting
   useEffect(() => {
-    if (submitted) return;
+    setIsMounted(true);
+  }, []);
+
+  // Handle initial loading
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const timer = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, [isMounted]);
+
+  // Handle result button appearance
+  useEffect(() => {
+    if (!isMounted) return;
+
+    if (submitted) {
+      const timer = setTimeout(() => {
+        setShowResultButton(true);
+      }, 10000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [submitted, isMounted]);
+
+  // Handle quiz timer
+  useEffect(() => {
+    if (!isMounted || submitted || isInitialLoading) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -233,13 +288,12 @@ export default function Home() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentPage, submitted]);
+  }, [currentPage, submitted, isInitialLoading, isMounted]);
 
   const handleNextQuestion = async () => {
     const newAnswers = { ...answers, [currentPage]: selectedAnswer || 'No answer' };
     setAnswers(newAnswers);
 
-    // Check if we're at the last question (index 5 for 6 questions)
     if (currentPage < QUIZ_QUESTIONS.length - 1) {
       setDirection(1);
       setCurrentPage(prev => prev + 1);
@@ -262,46 +316,58 @@ export default function Home() {
     setSelectedAnswer(answer);
   };
 
-  // Debugging log to check current page and total questions
-  console.log('Current page:', currentPage, 'Total questions:', QUIZ_QUESTIONS.length);
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-500/50 to-blue-500/50" />
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden">
       <BackgroundScene currentPage={currentPage} />
       
       <main className="relative z-10 container mx-auto h-screen">
-        {!submitted && <Timer timeLeft={timeLeft} />}
-        
-        <div className="grid grid-cols-3 h-full">
-          <div className="flex items-center justify-center">
-            <VideoAvatar videoName="avatar.mp4" />
-          </div>
-          
-          <div className="col-span-2 flex items-center justify-center">
-            <AnimatePresence mode="wait" custom={direction}>
-              {!submitted ? (
-                <QuizBox
-                  key={currentPage}
-                  question={QUIZ_QUESTIONS[currentPage].question}
-                  options={QUIZ_QUESTIONS[currentPage].options}
-                  selectedAnswer={selectedAnswer}
-                  onSelect={handleSelect}
-                  direction={direction}
-                />
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="backdrop-blur-lg bg-white/30 p-6 rounded-2xl shadow-lg 
-                            border border-white/20 relative"
-                >
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/50 to-transparent opacity-50" />
-                  <h2 className="relative text-xl text-gray-800">Terima kasih atas respons Anda!</h2>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
+        <AnimatePresence mode="wait">
+          {!isInitialLoading && !submitted && (
+            <>
+              <Timer timeLeft={timeLeft} />
+              <div className="grid grid-cols-3 h-full">
+                <div className="flex items-center justify-center">
+                  <VideoAvatar videoName="avatar.mp4" />
+                </div>
+                
+                <div className="col-span-2 flex items-center justify-center">
+                  <QuizBox
+                    key={currentPage}
+                    question={QUIZ_QUESTIONS[currentPage].question}
+                    options={QUIZ_QUESTIONS[currentPage].options}
+                    selectedAnswer={selectedAnswer}
+                    onSelect={handleSelect}
+                    direction={direction}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {submitted && showResultButton && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+            >
+              <button
+                onClick={() => router.push('/results')}
+                className="px-8 py-4 bg-white/30 backdrop-blur-md rounded-xl
+                         text-gray-800 font-semibold border border-white/20
+                         hover:bg-white/40 transition-all duration-300
+                         hover:scale-105 active:scale-95"
+              >
+                View Results
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
