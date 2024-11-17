@@ -54,6 +54,7 @@ const QUIZ_QUESTIONS = [
     options: ['<200', '200-900', '900-3000', '3000+']
   }
 ];
+
 const BackgroundVideo = () => {
   const [isMounted, setIsMounted] = useState(false);
 
@@ -234,141 +235,186 @@ const QuizBox = ({
 
 export default function Home() {
   const router = useRouter();
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(10);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [showResultButton, setShowResultButton] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [direction, setDirection] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [submitted, setSubmitted] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(10);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
 
-  // Handle client-side mounting
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Handle initial loading
   useEffect(() => {
-    if (!isMounted) return;
-
     const timer = setTimeout(() => {
       setIsInitialLoading(false);
-    }, 10000);
+    }, 10000); // 10 seconds
 
     return () => clearTimeout(timer);
-  }, [isMounted]);
+  }, []);
 
-  // Handle result button appearance
+  // Timer Effect
   useEffect(() => {
-    if (!isMounted) return;
-
-    if (submitted) {
-      const timer = setTimeout(() => {
-        setShowResultButton(true);
-      }, 10000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [submitted, isMounted]);
-
-  // Handle quiz timer
-  useEffect(() => {
-    if (!isMounted || submitted || isInitialLoading) return;
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
+    if (isSubmitted || isPaused || isInitialLoading) return; // Add isInitialLoading check
+  
+    const timerInterval = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime <= 1) {
           handleNextQuestion();
           return 10;
         }
-        return prev - 1;
+        return prevTime - 1;
       });
     }, 1000);
+  
+    return () => clearInterval(timerInterval);
+  }, [currentQuestionIndex, isSubmitted, isPaused, isInitialLoading]); // Add isInitialLoading to dependencies
 
-    return () => clearInterval(timer);
-  }, [currentPage, submitted, isInitialLoading, isMounted]);
+  // Handle answer selection
+  const handleAnswerSelect = (answer: string) => {
+    setSelectedAnswer(answer);
+    setAnswers(prev => ({
+      ...prev,
+      [currentQuestionIndex]: answer
+    }));
+  };
 
+  // Handle moving to next question
   const handleNextQuestion = async () => {
-    const newAnswers = { ...answers, [currentPage]: selectedAnswer || 'No answer' };
-    setAnswers(newAnswers);
+    setIsPaused(true); // Pause timer during transition
 
-    if (currentPage < QUIZ_QUESTIONS.length - 1) {
-      setDirection(1);
-      setCurrentPage(prev => prev + 1);
+    // Save current answer if none selected
+    if (!answers[currentQuestionIndex]) {
+      setAnswers(prev => ({
+        ...prev,
+        [currentQuestionIndex]: selectedAnswer || 'No answer'
+      }));
+    }
+
+    if (currentQuestionIndex < QUIZ_QUESTIONS.length - 1) {
+      // Move to next question
+      setCurrentQuestionIndex(prev => prev + 1);
       setSelectedAnswer(null);
       setTimeLeft(10);
+      
+      // Resume timer after a short delay
+      setTimeout(() => {
+        setIsPaused(false);
+      }, 500);
     } else {
+      // Submit quiz
       try {
         await addDoc(collection(db, "quiz-responses"), {
-          answers: newAnswers,
+          answers: {
+            ...answers,
+            [currentQuestionIndex]: selectedAnswer || 'No answer'
+          },
           timestamp: new Date(),
         });
-        setSubmitted(true);
+        setIsSubmitted(true);
+        setTimeout(() => setShowResults(true), 2000);
       } catch (error) {
         console.error("Error submitting response:", error);
+        setIsPaused(false);
       }
     }
   };
 
-  const handleSelect = (answer: string) => {
-    setSelectedAnswer(answer);
-  };
-
   if (!isMounted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-500/50 to-blue-500/50" />
-    );
+    return <div className="min-h-screen bg-gradient-to-br from-purple-500/50 to-blue-500/50" />;
   }
+
+  const progress = ((currentQuestionIndex + 1) / QUIZ_QUESTIONS.length) * 100;
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <BackgroundScene currentPage={currentPage} />
+      <BackgroundScene currentPage={currentQuestionIndex} />
       
-      <main className="relative z-10 container mx-auto h-screen">
-        <AnimatePresence mode="wait">
-          {!isInitialLoading && !submitted && (
-            <>
-              <Timer timeLeft={timeLeft} />
-              <div className="grid grid-cols-3 h-full">
-                <div className="flex items-center justify-center">
-                  <VideoAvatar videoName="avatar.mp4" />
-                </div>
-                
-                <div className="col-span-2 flex items-center justify-center">
-                  <QuizBox
-                    key={currentPage}
-                    question={QUIZ_QUESTIONS[currentPage].question}
-                    options={QUIZ_QUESTIONS[currentPage].options}
-                    selectedAnswer={selectedAnswer}
-                    onSelect={handleSelect}
-                    direction={direction}
-                  />
+      {/* Only show content after initial loading */}
+      {!isInitialLoading && (
+        <>
+          {/* Timer */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
+            <Timer 
+              timeLeft={timeLeft} 
+              totalTime={10}
+              isVisible={!isSubmitted && !isPaused}
+            />
+          </div>
+          
+          <main className="relative z-10 container mx-auto h-screen">
+            <div className="grid grid-cols-3 h-full">
+              <div className="flex items-center justify-center">
+                <VideoAvatar videoName="avatar.mp4" />
+              </div>
+              
+              <div className="col-span-2 flex items-center justify-center">
+                <div className="relative w-full max-w-md">
+                  {/* Progress Bar */}
+                  <motion.div 
+                    className="absolute -top-4 left-0 w-full h-1 bg-gray-200/30 rounded-full overflow-hidden"
+                  >
+                    <motion.div 
+                      className="h-full bg-blue-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </motion.div>
+
+                  {/* Question Display */}
+                  <AnimatePresence mode="wait">
+                    {!isSubmitted && (
+                      <QuizBox
+                        key={currentQuestionIndex}
+                        question={QUIZ_QUESTIONS[currentQuestionIndex].question}
+                        options={QUIZ_QUESTIONS[currentQuestionIndex].options}
+                        selectedAnswer={selectedAnswer}
+                        onSelect={handleAnswerSelect}
+                        direction={1}
+                      />
+                    )}
+
+                    {showResults && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex flex-col items-center justify-center gap-4"
+                      >
+                        <h2 className="text-2xl font-bold text-gray-800">Quiz Completed!</h2>
+                        <button
+                          onClick={() => router.push('/results')}
+                          className="px-8 py-4 bg-white/30 backdrop-blur-md rounded-xl
+                                   text-gray-800 font-semibold border border-white/20
+                                   hover:bg-white/40 transition-all duration-300"
+                        >
+                          View Results
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Manual Next Button (Optional) */}
+                  {!isSubmitted && selectedAnswer && (
+                    <motion.button
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="mt-4 px-6 py-3 bg-blue-500 text-white rounded-lg w-full"
+                      onClick={handleNextQuestion}
+                    >
+                      pencet ini klo males nunggu akwoakwoka (buat testing)
+                    </motion.button>
+                  )}
                 </div>
               </div>
-            </>
-          )}
-
-          {submitted && showResultButton && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
-            >
-              <button
-                onClick={() => router.push('/results')}
-                className="px-8 py-4 bg-white/30 backdrop-blur-md rounded-xl
-                         text-gray-800 font-semibold border border-white/20
-                         hover:bg-white/40 transition-all duration-300
-                         hover:scale-105 active:scale-95"
-              >
-                View Results
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
+            </div>
+          </main>
+        </>
+      )}
     </div>
   );
 }
