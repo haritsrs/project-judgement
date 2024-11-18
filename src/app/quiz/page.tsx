@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 
 // Color theme configuration
 const THEME = {
-  selectedButton: 'bg-blue-500/50', // Easily change the selected button color here
+  selectedButton: 'bg-blue-500/50',
   hoverButton: 'bg-white/30',
   defaultButton: 'bg-white/20',
   timer: {
@@ -16,7 +16,7 @@ const THEME = {
     text: 'text-gray-800',
     bar: {
       background: 'bg-gray-200/30',
-      fill: 'bg-blue-500' // Progress bar color
+      fill: 'bg-blue-500'
     }
   }
 };
@@ -55,6 +55,20 @@ const QUIZ_QUESTIONS = [
   }
 ];
 
+const IntroVideo = () => {
+  return (
+    <video 
+      className="fixed inset-0 w-full h-full object-cover"
+      autoPlay
+      muted
+      playsInline
+      loop
+    >
+      <source src="/intro.mp4" type="video/mp4" />
+    </video>
+  );
+};
+
 const BackgroundVideo = () => {
   const [isMounted, setIsMounted] = useState(false);
 
@@ -74,6 +88,101 @@ const BackgroundVideo = () => {
     >
       <source src="/background.mp4" type="video/mp4" />
     </video>
+  );
+};
+
+const LandingPage = ({ onStart }: { onStart: (name: string, phone: string) => void }) => {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [isValid, setIsValid] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    // Show the form after the intro video plays (adjust timing as needed)
+    const timer = setTimeout(() => {
+      setShowForm(true);
+    }, 5000); // 5 seconds, adjust based on your intro video length
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    setIsValid(name.length >= 2 && phone.length >= 10);
+  }, [name, phone]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isValid) {
+      onStart(name, phone);
+    }
+  };
+
+  return (
+    <>
+      <IntroVideo />
+      <AnimatePresence>
+        {showForm && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center z-10 bg-black/50"
+          >
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full max-w-md"
+            >
+              <div className="backdrop-blur-lg bg-white/30 p-8 rounded-2xl shadow-lg border border-white/20">
+                <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Welcome to the Quiz!</h1>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div>
+                    <label className="block text-gray-800 mb-2 font-medium">Name</label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/50 border border-white/20 
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 
+                               placeholder-gray-500 text-gray-800"
+                      placeholder="Enter your name"
+                      minLength={2}
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-800 mb-2 font-medium">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/50 border border-white/20 
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 
+                               placeholder-gray-500 text-gray-800"
+                      placeholder="Enter your phone number"
+                      minLength={10}
+                      required
+                    />
+                  </div>
+
+                  <motion.button
+                    type="submit"
+                    className={`w-full py-4 rounded-xl font-semibold text-white
+                              transition-all duration-300 ${isValid ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400'}`}
+                    whileHover={isValid ? { scale: 1.02 } : {}}
+                    whileTap={isValid ? { scale: 0.98 } : {}}
+                    disabled={!isValid}
+                  >
+                    Start Quiz
+                  </motion.button>
+                </form>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
@@ -244,18 +353,29 @@ export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  // New states for landing page
+  const [quizStarted, setQuizStarted] = useState(false);
+  const [userData, setUserData] = useState({ name: '', phone: '' });
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  // Modified initial loading timer to start after quiz starts
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsInitialLoading(false);
-    }, 10000); // 10 seconds
+    if (quizStarted) {
+      const timer = setTimeout(() => {
+        setIsInitialLoading(false);
+      }, 10000); // 10 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [quizStarted]);
 
-    return () => clearTimeout(timer);
-  }, []);
+  // Handle quiz start
+  const handleStart = (name: string, phone: string) => {
+    setUserData({ name, phone });
+    setQuizStarted(true);
+  };
 
   // Timer Effect
   useEffect(() => {
@@ -285,9 +405,8 @@ export default function Home() {
 
   // Handle moving to next question
   const handleNextQuestion = async () => {
-    setIsPaused(true); // Pause timer during transition
+    setIsPaused(true);
 
-    // Save current answer if none selected
     if (!answers[currentQuestionIndex]) {
       setAnswers(prev => ({
         ...prev,
@@ -296,19 +415,18 @@ export default function Home() {
     }
 
     if (currentQuestionIndex < QUIZ_QUESTIONS.length - 1) {
-      // Move to next question
       setCurrentQuestionIndex(prev => prev + 1);
       setSelectedAnswer(null);
       setTimeLeft(10);
       
-      // Resume timer after a short delay
       setTimeout(() => {
         setIsPaused(false);
       }, 500);
     } else {
-      // Submit quiz
       try {
         await addDoc(collection(db, "quiz-responses"), {
+          name: userData.name,
+          phone: userData.phone,
           answers: {
             ...answers,
             [currentQuestionIndex]: selectedAnswer || 'No answer'
@@ -332,89 +450,108 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <BackgroundScene currentPage={currentQuestionIndex} />
-      
-      {/* Only show content after initial loading */}
-      {!isInitialLoading && (
-        <>
-          {/* Timer */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
-            <Timer 
-              timeLeft={timeLeft} 
-              totalTime={10}
-              isVisible={!isSubmitted && !isPaused}
-            />
-          </div>
-          
-          <main className="relative z-10 container mx-auto h-screen">
-            <div className="grid grid-cols-3 h-full">
-              <div className="flex items-center justify-center">
-                <VideoAvatar videoName="avatar.mp4" />
-              </div>
-              
-              <div className="col-span-2 flex items-center justify-center">
-                <div className="relative w-full max-w-md">
-                  {/* Progress Bar */}
-                  <motion.div 
-                    className="absolute -top-4 left-0 w-full h-1 bg-gray-200/30 rounded-full overflow-hidden"
-                  >
-                    <motion.div 
-                      className="h-full bg-blue-500"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress}%` }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  </motion.div>
-
-                  {/* Question Display */}
-                  <AnimatePresence mode="wait">
-                    {!isSubmitted && (
-                      <QuizBox
-                        key={currentQuestionIndex}
-                        question={QUIZ_QUESTIONS[currentQuestionIndex].question}
-                        options={QUIZ_QUESTIONS[currentQuestionIndex].options}
-                        selectedAnswer={selectedAnswer}
-                        onSelect={handleAnswerSelect}
-                        direction={1}
-                      />
-                    )}
-
-                    {showResults && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col items-center justify-center gap-4"
-                      >
-                        <h2 className="text-2xl font-bold text-gray-800">Quiz Completed!</h2>
-                        <button
-                          onClick={() => router.push('/results')}
-                          className="px-8 py-4 bg-white/30 backdrop-blur-md rounded-xl
-                                   text-gray-800 font-semibold border border-white/20
-                                   hover:bg-white/40 transition-all duration-300"
+      <AnimatePresence mode="wait">
+        {!quizStarted ? (
+          <motion.div
+            key="landing"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-screen"
+          >
+            <LandingPage onStart={handleStart} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="quiz"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="w-full h-screen"
+          >
+            <BackgroundScene currentPage={currentQuestionIndex} />
+            
+            <main className="relative z-10 container mx-auto h-screen">
+              <div className="grid grid-cols-3 h-full">
+                <div className="flex items-center justify-center">
+                  <VideoAvatar videoName="avatar.mp4" />
+                </div>
+                
+                <div className="col-span-2 flex items-center justify-center">
+                  {!isInitialLoading && (
+                    <>
+                      {/* Timer */}
+                      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
+                        <Timer 
+                          timeLeft={timeLeft}
+                          totalTime={10}
+                          isVisible={!isSubmitted && !isPaused}
+                        />
+                      </div>
+                      
+                      <div className="relative w-full max-w-md">
+                        {/* Progress Bar */}
+                        <motion.div 
+                          className="absolute -top-4 left-0 w-full h-1 bg-gray-200/30 rounded-full overflow-hidden"
                         >
-                          View Results
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Manual Next Button (Optional) */}
-                  {!isSubmitted && selectedAnswer && (
-                    <motion.button
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="mt-4 px-6 py-3 bg-blue-500 text-white rounded-lg w-full"
-                      onClick={handleNextQuestion}
-                    >
-                      pencet ini klo males nunggu akwoakwoka (buat testing)
-                    </motion.button>
+                          <motion.div 
+                            className="h-full bg-blue-500"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progress}%` }}
+                            transition={{ duration: 0.3 }}
+                          />
+                        </motion.div>
+  
+                        {/* Question Display */}
+                        <AnimatePresence mode="wait">
+                          {!isSubmitted && (
+                            <QuizBox
+                              key={currentQuestionIndex}
+                              question={QUIZ_QUESTIONS[currentQuestionIndex].question}
+                              options={QUIZ_QUESTIONS[currentQuestionIndex].options}
+                              selectedAnswer={selectedAnswer}
+                              onSelect={handleAnswerSelect}
+                              direction={1}
+                            />
+                          )}
+  
+                          {showResults && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="flex flex-col items-center justify-center gap-4"
+                            >
+                              <h2 className="text-2xl font-bold text-gray-800">Quiz Completed!</h2>
+                              <button
+                                onClick={() => router.push('/results')}
+                                className="px-8 py-4 bg-white/30 backdrop-blur-md rounded-xl
+                                         text-gray-800 font-semibold border border-white/20
+                                         hover:bg-white/40 transition-all duration-300"
+                              >
+                                View Results
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+  
+                        {/* Manual Next Button */}
+                        {!isSubmitted && selectedAnswer && (
+                          <motion.button
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="mt-4 px-6 py-3 bg-blue-500 text-white rounded-lg w-full"
+                            onClick={handleNextQuestion}
+                          >
+                            pencet ini klo males nunggu akwoakwoka (buat testing)
+                          </motion.button>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
-            </div>
-          </main>
-        </>
-      )}
+            </main>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
