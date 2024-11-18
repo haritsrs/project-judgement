@@ -21,6 +21,16 @@ const THEME = {
   }
 };
 
+const INITIAL_SCORES = {
+  "NR": 0,  // Nerd
+  "WB": 0,  // Wibu
+  "SB": 0,  // Softboy
+  "JM": 0,  // Jamet
+  "SN": 0,  // Skena
+  "BB": 0,  // Badboy
+  "SR": 0   // Starboy
+};
+
 // Quiz questions data remains the same
 const QUIZ_QUESTIONS = [
   {
@@ -52,6 +62,65 @@ const QUIZ_QUESTIONS = [
     id: 6,
     question: "Berapa followers instagram mu?",
     options: ['<200', '200-900', '900-3000', '3000+']
+  }
+];
+
+const QUIZ_SCORING = [
+  {
+    id: 1,
+    options: [
+      { value: '0%', scores: { NR: 4, WB: 3 } },
+      { value: '25%', scores: { WB: 3, NR: 3, SB: 1, JM: 1 } },
+      { value: '50%', scores: { SB: 3, JM: 2, BB: 1, WB: 1 } },
+      { value: '75%', scores: { SB: 4, BB: 4, JM: 3, SR: 2 } },
+      { value: '100%', scores: { SN: 5, SR: 5, BB: 4, JM: 4, SB: 3 } }
+    ]
+  },
+  {
+    id: 2,
+    options: [
+      { value: '0', scores: { NR: 3, WB: 2, SB: 1 } },
+      { value: '1-3', scores: { SB: 3, SN: 2, NR: 1, WB: 1 } },
+      { value: '4-10', scores: { SN: 3, BB: 2, JM: 2, SR: 2 } },
+      { value: '10+', scores: { BB: 4, SR: 3, JM: 3, SN: 2 } }
+    ]
+  },
+  {
+    id: 3,
+    options: [
+      { value: 'Nggak', scores: { NR: 3, WB: 3, SB: 2 } },
+      { value: 'Pasif', scores: { SB: 3, WB: 2, NR: 1 } },
+      { value: 'Aktif', scores: { BB: 4, SR: 3, SN: 3, JM: 3, SB: 1 } },
+      { value: 'Akut', scores: { JM: 4, BB: 3, SN: 3, SR: 3 } }
+    ]
+  },
+  {
+    id: 4,
+    options: [
+      { value: 'Nggak Pernah', scores: { NR: 3, WB: 3, SB: 2, SN: 1 } },
+      { value: 'Pernah Aja', scores: { SB: 3, SN: 2, NR: 1, WB: 1 } },
+      { value: 'Aktif', scores: { BB: 3, JM: 3, SR: 3, SN: 2 } },
+      { value: 'Akut', scores: { JM: 4, BB: 3, SR: 3, SN: 1 } }
+    ]
+  },
+  {
+    id: 5,
+    options: [
+      { value: 'Baggy Outfit', scores: { SN: 4, JM: 2, BB: 2 } },
+      { value: 'Jaket Kupluk', scores: { WB: 5, NR: 2 } },
+      { value: 'Kaos Oblong', scores: { NR: 3, WB: 2, JM: 1 } },
+      { value: 'Skinny Jeans', scores: { JM: 5, BB: 2 } },
+      { value: 'Jaket Kulit', scores: { BB: 4, SN: 3, JM: 2, SR: 1 } }
+    ]
+  },
+  {
+    id: 6,
+    options: [
+      { value: 'Kurang dari 200', scores: { NR: 3, WB: 3, JM: 3, SB: 2 } },
+      { value: '200-900', scores: { SB: 4, JM: 2, NR: 1, WB: 1 } },
+      { value: '900-3000', scores: { BB: 4, SB: 3, SN: 3, JM: 2 } },
+      { value: '3000+', scores: { SR: 6, BB: 2, SN: 2, SB: 2 } }
+    ]
   }
 ];
 
@@ -353,7 +422,7 @@ export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  // New states for landing page
+  const [finalScores, setFinalScores] = useState(INITIAL_SCORES);
   const [quizStarted, setQuizStarted] = useState(false);
   const [userData, setUserData] = useState({ name: '', phone: '' });
 
@@ -403,6 +472,25 @@ export default function Home() {
     }));
   };
 
+  const calculateScores = (answers: Record<number, string>) => {
+    const scores = { ...INITIAL_SCORES };
+
+    QUIZ_QUESTIONS.forEach((question, index) => {
+      const scoringData = QUIZ_SCORING[index];
+      const selectedAnswer = answers[index];
+      
+      const selectedOption = scoringData.options.find(opt => opt.value === selectedAnswer);
+      
+      if (selectedOption) {
+        Object.entries(selectedOption.scores).forEach(([category, points]) => {
+          scores[category as keyof typeof INITIAL_SCORES] += points;
+        });
+      }
+    });
+
+    return scores;
+  };
+
   // Handle moving to next question
   const handleNextQuestion = async () => {
     setIsPaused(true);
@@ -424,15 +512,22 @@ export default function Home() {
       }, 500);
     } else {
       try {
+        const completeAnswers = {
+          ...answers,
+          [currentQuestionIndex]: selectedAnswer || 'No answer'
+        };
+
+        const calculatedScores = calculateScores(completeAnswers);
+        setFinalScores(calculatedScores);
+
         await addDoc(collection(db, "quiz-responses"), {
           name: userData.name,
           phone: userData.phone,
-          answers: {
-            ...answers,
-            [currentQuestionIndex]: selectedAnswer || 'No answer'
-          },
+          answers: completeAnswers,
+          scores: calculatedScores,
           timestamp: new Date(),
         });
+        
         setIsSubmitted(true);
         setTimeout(() => setShowResults(true), 2000);
       } catch (error) {
@@ -514,22 +609,31 @@ export default function Home() {
                           )}
   
                           {showResults && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="flex flex-col items-center justify-center gap-4"
-                            >
-                              <h2 className="text-2xl font-bold text-gray-800">Quiz Completed!</h2>
-                              <button
-                                onClick={() => router.push('/results')}
-                                className="px-8 py-4 bg-white/30 backdrop-blur-md rounded-xl
-                                         text-gray-800 font-semibold border border-white/20
-                                         hover:bg-white/40 transition-all duration-300"
-                              >
-                                View Results
-                              </button>
-                            </motion.div>
-                          )}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col items-center justify-center gap-4"
+    >
+      <h2 className="text-2xl font-bold text-gray-800">Quiz Results!</h2>
+      <div className="bg-white/30 backdrop-blur-md p-6 rounded-xl border border-white/20">
+        <h3 className="text-xl font-semibold mb-4">Your Personality Scores:</h3>
+        {Object.entries(finalScores).map(([category, score]) => (
+          <div key={category} className="flex justify-between mb-2">
+            <span>{category}</span>
+            <span>{score}</span>
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={() => router.push('/results')}
+        className="px-8 py-4 bg-white/30 backdrop-blur-md rounded-xl
+                   text-gray-800 font-semibold border border-white/20
+                   hover:bg-white/40 transition-all duration-300"
+      >
+        Lihat Detail Hasil
+      </button>
+    </motion.div>
+  )}
                         </AnimatePresence>
   
                         {/* Manual Next Button */}
