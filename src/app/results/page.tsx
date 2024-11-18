@@ -120,12 +120,16 @@ export default function ResultsPage() {
           <h2 className="text-2xl font-semibold">{personalityInfo.title}</h2>
           <p className="mt-4 text-gray-700">{personalityInfo.description}</p>
         </div>
-
+  
         <div className="bg-white/20 rounded-xl p-4 mb-6">
           <h3 className="font-semibold mb-2">Detail Skor:</h3>
           {Object.entries(latestResult.scores).map(([category, score]) => (
             <div key={category} className="flex justify-between mb-1">
-              <span>{PERSONALITY_DESCRIPTIONS[category].title}</span>
+              <span>
+                {PERSONALITY_DESCRIPTIONS[
+                  category as keyof typeof PERSONALITY_DESCRIPTIONS
+                ].title}
+              </span>
               <span>{score}</span>
             </div>
           ))}

@@ -310,11 +310,19 @@ const VideoAvatar = ({ videoName }: { videoName: string }) => {
   );
 };
 
-const Timer = ({ timeLeft }: { timeLeft: number }) => {
-  const progress = (timeLeft / 10) * 100;
+interface TimerProps {
+  timeLeft: number;
+  totalTime: number; // Add this prop
+  isVisible: boolean; // Add this prop
+}
+
+const Timer: React.FC<TimerProps> = ({ timeLeft, totalTime, isVisible }) => {
+  if (!isVisible) return null; // Don't render if not visible
+
+  const progress = (timeLeft / totalTime) * 100;
 
   return (
-    <motion.div 
+    <motion.div
       className={`absolute top-4 left-1/2 -translate-x-1/2 ${THEME.timer.background} backdrop-blur-md px-6 py-3 rounded-full border border-white/20`}
       initial={{ y: -50, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
@@ -324,10 +332,10 @@ const Timer = ({ timeLeft }: { timeLeft: number }) => {
           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           <span className={`text-2xl font-bold ${THEME.timer.text}`}>{timeLeft}</span>
         </div>
-        
+
         {/* Progress bar container */}
         <div className={`w-32 h-2 rounded-full ${THEME.timer.bar.background}`}>
-          <motion.div 
+          <motion.div
             className={`h-full rounded-full ${THEME.timer.bar.fill}`}
             initial={{ width: '100%' }}
             animate={{ width: `${progress}%` }}
