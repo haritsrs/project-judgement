@@ -44,7 +44,7 @@ const LandingPage = () => {
                    transition-opacity duration-1000
                    ${isExiting ? 'opacity-0' : 'opacity-100'}`}
       >
-        <source src="/placeholder-video.mp4" type="video/mp4" />
+        <source src="/lobby.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
 
