@@ -20,7 +20,7 @@ const LandingPage = () => {
     setIsExiting(true);
 
     // Wait for the fade-out animation before navigating
-    await delay(2000);
+    await delay(500);
 
     // Navigate to the next page
     router.push('/quiz'); // This now uses the new router

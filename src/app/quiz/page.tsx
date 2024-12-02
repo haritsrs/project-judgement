@@ -154,7 +154,7 @@ const BackgroundVideo = () => {
       muted
       playsInline
     >
-      <source src="/background.mp4" type="video/mp4" />
+      <source src="/quisioner.mp4" type="video/mp4" />
     </video>
   );
 };
@@ -271,40 +271,6 @@ const BackgroundScene = ({ currentPage }: { currentPage: number }) => {
         <BackgroundVideo />
       </div>
       <div className="absolute inset-0 bg-black/20" />
-    </motion.div>
-  );
-};
-
-const VideoAvatar = ({ videoName }: { videoName: string }) => {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) return null;
-
-  return (
-    <motion.div 
-      className="w-64 h-64 rounded-full overflow-hidden"
-      animate={{ 
-        y: [0, -20, 0],
-      }}
-      transition={{
-        duration: 4,
-        repeat: Infinity,
-        ease: "easeInOut"
-      }}
-    >
-      <video 
-        className="w-full h-full object-cover"
-        autoPlay
-        loop
-        muted
-        playsInline
-      >
-        <source src={`/${videoName}`} type="video/mp4" />
-      </video>
     </motion.div>
   );
 };
@@ -567,97 +533,91 @@ export default function Home() {
             key="quiz"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="w-full h-screen"
+            className="w-full h-screen flex items-center justify-center"
           >
             <BackgroundScene currentPage={currentQuestionIndex} />
             
-            <main className="relative z-10 container mx-auto h-screen">
-              <div className="grid grid-cols-3 h-full">
-                <div className="flex items-center justify-center">
-                  <VideoAvatar videoName="avatar.mp4" />
-                </div>
-                
-                <div className="col-span-2 flex items-center justify-center">
-                  {!isInitialLoading && (
-                    <>
-                      {/* Timer */}
-                      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
-                        <Timer 
-                          timeLeft={timeLeft}
-                          totalTime={10}
-                          isVisible={!isSubmitted && !isPaused}
-                        />
-                      </div>
-                      
-                      <div className="relative w-full max-w-md">
-                        {/* Progress Bar */}
+            <main className="relative z-10 container mx-auto h-screen flex items-center justify-center">
+              <div className="w-full max-w-md">
+                {!isInitialLoading && (
+                  <>
+                    {/* Timer */}
+                    <div className="absolute items-center justify-center top-4 -translate-x-1/2 z-20">
+                      <Timer 
+                        timeLeft={timeLeft}
+                        totalTime={10}
+                        isVisible={!isSubmitted && !isPaused}
+                      />
+                    </div>
+                    
+                    <div className="relative w-full">
+                      {/* Progress Bar */}
+                      <motion.div 
+                        className="absolute -top-4 left-0 w-full h-1 bg-gray-200/30 rounded-full overflow-hidden"
+                      >
                         <motion.div 
-                          className="absolute -top-4 left-0 w-full h-1 bg-gray-200/30 rounded-full overflow-hidden"
-                        >
-                          <motion.div 
-                            className="h-full bg-blue-500"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progress}%` }}
-                            transition={{ duration: 0.3 }}
+                          className="h-full bg-blue-500"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progress}%` }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      </motion.div>
+
+                      {/* Question Display */}
+                      <AnimatePresence mode="wait">
+                        {!isSubmitted && (
+                          <QuizBox
+                            key={currentQuestionIndex}
+                            question={QUIZ_QUESTIONS[currentQuestionIndex].question}
+                            options={QUIZ_QUESTIONS[currentQuestionIndex].options}
+                            selectedAnswer={selectedAnswer}
+                            onSelect={handleAnswerSelect}
+                            direction={1}
                           />
-                        </motion.div>
-  
-                        {/* Question Display */}
-                        <AnimatePresence mode="wait">
-                          {!isSubmitted && (
-                            <QuizBox
-                              key={currentQuestionIndex}
-                              question={QUIZ_QUESTIONS[currentQuestionIndex].question}
-                              options={QUIZ_QUESTIONS[currentQuestionIndex].options}
-                              selectedAnswer={selectedAnswer}
-                              onSelect={handleAnswerSelect}
-                              direction={1}
-                            />
-                          )}
-  
-                          {showResults && (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col items-center justify-center gap-4"
-    >
-      <h2 className="text-2xl font-bold text-gray-800">Quiz Results!</h2>
-      <div className="bg-white/30 backdrop-blur-md p-6 rounded-xl border border-white/20">
-        <h3 className="text-xl font-semibold mb-4">Your Personality Scores:</h3>
-        {Object.entries(finalScores).map(([category, score]) => (
-          <div key={category} className="flex justify-between mb-2">
-            <span>{category}</span>
-            <span>{score}</span>
-          </div>
-        ))}
-      </div>
-      <button
-        onClick={() => router.push('/results')}
-        className="px-8 py-4 bg-white/30 backdrop-blur-md rounded-xl
-                   text-gray-800 font-semibold border border-white/20
-                   hover:bg-white/40 transition-all duration-300"
-      >
-        Lihat Detail Hasil
-      </button>
-    </motion.div>
-  )}
-                        </AnimatePresence>
-  
-                        {/* Manual Next Button */}
-                        {!isSubmitted && selectedAnswer && (
-                          <motion.button
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="mt-4 px-6 py-3 bg-blue-500 text-white rounded-lg w-full"
-                            onClick={handleNextQuestion}
-                          >
-                            pencet ini klo males nunggu akwoakwoka (buat testing)
-                          </motion.button>
                         )}
-                      </div>
-                    </>
-                  )}
-                </div>
+
+                        {showResults && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex flex-col items-center justify-center gap-4"
+                          >
+                            <h2 className="text-2xl font-bold text-gray-800">Quiz Results!</h2>
+                            <div className="bg-white/30 backdrop-blur-md p-6 rounded-xl border border-white/20">
+                              <h3 className="text-xl font-semibold mb-4">Your Personality Scores:</h3>
+                              {Object.entries(finalScores).map(([category, score]) => (
+                                <div key={category} className="flex justify-between mb-2">
+                                  <span>{category}</span>
+                                  <span>{score}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <button
+                              onClick={() => router.push('/results')}
+                              className="px-8 py-4 bg-white/30 backdrop-blur-md rounded-xl
+                                         text-gray-800 font-semibold border border-white/20
+                                         hover:bg-white/40 transition-all duration-300"
+                            >
+                              Lihat Detail Hasil
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Manual Next Button */}
+                      {!isSubmitted && selectedAnswer && (
+                        <motion.button
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="mt-4 px-6 py-3 bg-blue-500 text-white rounded-lg w-full"
+                          onClick={handleNextQuestion}
+                        >
+                          pencet ini klo males nunggu akwoakwoka (buat testing)
+                        </motion.button>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </main>
           </motion.div>
