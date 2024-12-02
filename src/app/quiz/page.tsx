@@ -131,9 +131,8 @@ const IntroVideo = () => {
       autoPlay
       muted
       playsInline
-      loop
     >
-      <source src="/intro.mp4" type="video/mp4" />
+      <source src="/pembuka.mp4" type="video/mp4" />
     </video>
   );
 };
@@ -170,7 +169,7 @@ const LandingPage = ({ onStart }: { onStart: (name: string, phone: string) => vo
     // Show the form after the intro video plays (adjust timing as needed)
     const timer = setTimeout(() => {
       setShowForm(true);
-    }, 5000); // 5 seconds, adjust based on your intro video length
+    }, 32000); // 5 seconds, adjust based on your intro video length
     
     return () => clearTimeout(timer);
   }, []);
