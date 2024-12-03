@@ -154,7 +154,7 @@ const BackgroundVideo = () => {
       muted
       playsInline
     >
-      <source src="/background.mp4" type="video/mp4" />
+      <source src="/quisioner.mp4" type="video/mp4" />
     </video>
   );
 };
@@ -166,10 +166,9 @@ const LandingPage = ({ onStart }: { onStart: (name: string, phone: string) => vo
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    // Show the form after the intro video plays (adjust timing as needed)
     const timer = setTimeout(() => {
       setShowForm(true);
-    }, 32000); // 5 seconds, adjust based on your intro video length
+    }, 32000);
     
     return () => clearTimeout(timer);
   }, []);
@@ -275,48 +274,14 @@ const BackgroundScene = ({ currentPage }: { currentPage: number }) => {
   );
 };
 
-const VideoAvatar = ({ videoName }: { videoName: string }) => {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) return null;
-
-  return (
-    <motion.div 
-      className="w-64 h-64 rounded-full overflow-hidden"
-      animate={{ 
-        y: [0, -20, 0],
-      }}
-      transition={{
-        duration: 4,
-        repeat: Infinity,
-        ease: "easeInOut"
-      }}
-    >
-      <video 
-        className="w-full h-full object-cover"
-        autoPlay
-        loop
-        muted
-        playsInline
-      >
-        <source src={`/${videoName}`} type="video/mp4" />
-      </video>
-    </motion.div>
-  );
-};
-
 interface TimerProps {
   timeLeft: number;
-  totalTime: number; // Add this prop
-  isVisible: boolean; // Add this prop
+  totalTime: number;
+  isVisible: boolean;
 }
 
 const Timer: React.FC<TimerProps> = ({ timeLeft, totalTime, isVisible }) => {
-  if (!isVisible) return null; // Don't render if not visible
+  if (!isVisible) return null;
 
   const progress = (timeLeft / totalTime) * 100;
 
@@ -332,7 +297,6 @@ const Timer: React.FC<TimerProps> = ({ timeLeft, totalTime, isVisible }) => {
           <span className={`text-2xl font-bold ${THEME.timer.text}`}>{timeLeft}</span>
         </div>
 
-        {/* Progress bar container */}
         <div className={`w-32 h-2 rounded-full ${THEME.timer.bar.background}`}>
           <motion.div
             className={`h-full rounded-full ${THEME.timer.bar.fill}`}
@@ -418,59 +382,214 @@ const QuizBox = ({
   );
 };
 
+const calculateScores = (answers: Record<number, string>) => {
+  const scores = { ...INITIAL_SCORES };
+
+  QUIZ_QUESTIONS.forEach((question, index) => {
+    const scoringData = QUIZ_SCORING[index];
+    const selectedAnswer = answers[index];
+    
+    const selectedOption = scoringData.options.find(opt => opt.value === selectedAnswer);
+    
+    if (selectedOption) {
+      Object.entries(selectedOption.scores).forEach(([category, points]) => {
+        scores[category as keyof typeof INITIAL_SCORES] += points;
+      });
+    }
+  });
+
+  return scores;
+};
+
+const QuizContent = ({ 
+  currentQuestionIndex, 
+  timeLeft, 
+  selectedAnswer, 
+  onAnswerSelect, 
+  onNextQuestion, 
+  quizState, 
+  finalScores 
+}: {
+  currentQuestionIndex: number;
+  timeLeft: number;
+  selectedAnswer: string | null;
+  onAnswerSelect: (answer: string) => void;
+  onNextQuestion: () => void;
+  quizState: 'notStarted' | 'inProgress' | 'submitted';
+  finalScores: Record<string, number>;
+}) => {
+  const router = useRouter();
+
+  if (quizState === 'submitted') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center justify-center gap-4"
+        >
+          <h2 className="text-2xl font-bold text-gray-800">Quiz Results!</h2>
+          <div className="bg-white/30 backdrop-blur-md p-6 rounded-xl border border-white/20">
+            <h3 className="text-xl font-semibold mb-4">Your Personality Scores:</h3>
+            {Object.entries(finalScores).map(([category, score]) => (
+              <div key={category} className="flex justify-between mb-2">
+                <span>{category}</span>
+                <span>{score}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => router.push('/results')}
+            className="px-8 py-4 bg-white/30 backdrop-blur-md rounded-xl
+                       text-gray-800 font-semibold border border-white/20
+                       hover:bg-white/40 transition-all duration-300"
+          >
+            Lihat Detail Hasil
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen relative overflow-hidden">
+      <BackgroundScene currentPage={currentQuestionIndex} />
+      
+      <main className="relative z-10 container mx-auto h-screen flex items-center justify-center">
+        <div className="w-full max-w-md">
+          <Timer 
+            timeLeft={timeLeft}
+            totalTime={10}
+            isVisible={quizState === 'inProgress'}
+          />
+          
+          <div className="relative w-full">
+            <motion.div 
+              className="absolute -top-4 left-0 w-full h-1 bg-gray-200/30 rounded-full overflow-hidden"
+            >
+              <motion.div 
+                className="h-full bg-blue-500"
+                initial={{ width: 0 }}
+                animate={{ width: `${((currentQuestionIndex + 1) / QUIZ_QUESTIONS.length) * 100}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </motion.div>
+
+            <AnimatePresence mode="wait">
+              <QuizBox
+                key={currentQuestionIndex}
+                question={QUIZ_QUESTIONS[currentQuestionIndex].question}
+                options={QUIZ_QUESTIONS[currentQuestionIndex].options}
+                selectedAnswer={selectedAnswer}
+                onSelect={onAnswerSelect}
+                direction={1}
+              />
+            </AnimatePresence>
+
+            {selectedAnswer && (
+              <motion.button
+                onClick={onNextQuestion}
+                className="mt-4 w-full py-4 bg-blue-500 text-white rounded-xl 
+                           hover:bg-blue-600 transition-all duration-300"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                {currentQuestionIndex < QUIZ_QUESTIONS.length - 1 ? 'Next Question' : 'Finish Quiz'}
+              </motion.button>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
 export default function Home() {
   const router = useRouter();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(10);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [quizState, setQuizState] = useState<'notStarted' | 'inProgress' | 'submitted'>('notStarted');
   const [finalScores, setFinalScores] = useState(INITIAL_SCORES);
-  const [quizStarted, setQuizStarted] = useState(false);
   const [userData, setUserData] = useState({ name: '', phone: '' });
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // Modified initial loading timer to start after quiz starts
-  useEffect(() => {
-    if (quizStarted) {
-      const timer = setTimeout(() => {
-        setIsInitialLoading(false);
-      }, 10000); // 10 seconds
-      return () => clearTimeout(timer);
-    }
-  }, [quizStarted]);
 
   // Handle quiz start
   const handleStart = (name: string, phone: string) => {
     setUserData({ name, phone });
-    setQuizStarted(true);
+    setQuizState('inProgress');
   };
 
-  // Timer Effect
-  useEffect(() => {
-    if (isSubmitted || isPaused || isInitialLoading) return; // Add isInitialLoading check
+  // Comprehensive question navigation logic
+  const proceedToNextQuestion = () => {
+    // Ensure an answer is recorded if not already selected
+    if (!answers[currentQuestionIndex]) {
+      setAnswers(prev => ({
+        ...prev,
+        [currentQuestionIndex]: selectedAnswer || 'No answer'
+      }));
+    }
+
+    // Check if this is the last question
+    if (currentQuestionIndex < QUIZ_QUESTIONS.length - 1) {
+      // Move to next question
+      setCurrentQuestionIndex(prev => prev + 1);
+      setSelectedAnswer(null);
+      setTimeLeft(10);
+    } else {
+      // Quiz is complete
+      finishQuiz();
+    }
+  };
+
+  // Quiz completion logic
+  const finishQuiz = async () => {
+    try {
+      // Ensure final answer is recorded
+      const completeAnswers = {
+        ...answers,
+        [currentQuestionIndex]: selectedAnswer || 'No answer'
+      };
+
+      // Calculate scores
+      const calculatedScores = calculateScores(completeAnswers);
+      setFinalScores(calculatedScores);
+
+      // Submit to Firestore
+      await addDoc(collection(db, "quiz-responses"), {
+        name: userData.name,
+        phone: userData.phone,
+        answers: completeAnswers,
+        scores: calculatedScores,
+        timestamp: new Date(),
+      });
+
+      // Update quiz state
+      setQuizState('submitted');
+    } catch (error) {
+      console.error("Error submitting response:", error);
+    }
+  };
   
-    const timerInterval = setInterval(() => {
-      setTimeLeft((prevTime) => {
-        if (prevTime <= 1) {
-          handleNextQuestion();
-          return 10;
+  useEffect(() => {
+    // Only run timer when quiz is in progress and time is left
+    if (quizState !== 'inProgress') return;
+  
+    const timerId = setInterval(() => {
+      setTimeLeft(currentTime => {
+        if (currentTime <= 1) {
+          proceedToNextQuestion();
+          return 10; // Reset timer
         }
-        return prevTime - 1;
+        return currentTime - 1;
       });
     }, 1000);
   
-    return () => clearInterval(timerInterval);
-  }, [currentQuestionIndex, isSubmitted, isPaused, isInitialLoading]); // Add isInitialLoading to dependencies
+    // Cleanup timer
+    return () => clearInterval(timerId);
+  }, [quizState, proceedToNextQuestion]);
 
-  // Handle answer selection
+  // Answer selection handler
   const handleAnswerSelect = (answer: string) => {
     setSelectedAnswer(answer);
     setAnswers(prev => ({
@@ -479,190 +598,21 @@ export default function Home() {
     }));
   };
 
-  const calculateScores = (answers: Record<number, string>) => {
-    const scores = { ...INITIAL_SCORES };
-
-    QUIZ_QUESTIONS.forEach((question, index) => {
-      const scoringData = QUIZ_SCORING[index];
-      const selectedAnswer = answers[index];
-      
-      const selectedOption = scoringData.options.find(opt => opt.value === selectedAnswer);
-      
-      if (selectedOption) {
-        Object.entries(selectedOption.scores).forEach(([category, points]) => {
-          scores[category as keyof typeof INITIAL_SCORES] += points;
-        });
-      }
-    });
-
-    return scores;
-  };
-
-  // Handle moving to next question
-  const handleNextQuestion = async () => {
-    setIsPaused(true);
-
-    if (!answers[currentQuestionIndex]) {
-      setAnswers(prev => ({
-        ...prev,
-        [currentQuestionIndex]: selectedAnswer || 'No answer'
-      }));
-    }
-
-    if (currentQuestionIndex < QUIZ_QUESTIONS.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-      setSelectedAnswer(null);
-      setTimeLeft(10);
-      
-      setTimeout(() => {
-        setIsPaused(false);
-      }, 500);
-    } else {
-      try {
-        const completeAnswers = {
-          ...answers,
-          [currentQuestionIndex]: selectedAnswer || 'No answer'
-        };
-
-        const calculatedScores = calculateScores(completeAnswers);
-        setFinalScores(calculatedScores);
-
-        await addDoc(collection(db, "quiz-responses"), {
-          name: userData.name,
-          phone: userData.phone,
-          answers: completeAnswers,
-          scores: calculatedScores,
-          timestamp: new Date(),
-        });
-        
-        setIsSubmitted(true);
-        setTimeout(() => setShowResults(true), 2000);
-      } catch (error) {
-        console.error("Error submitting response:", error);
-        setIsPaused(false);
-      }
-    }
-  };
-
-  if (!isMounted) {
-    return <div className="min-h-screen bg-gradient-to-br from-purple-500/50 to-blue-500/50" />;
-  }
-
-  const progress = ((currentQuestionIndex + 1) / QUIZ_QUESTIONS.length) * 100;
-
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <AnimatePresence mode="wait">
-        {!quizStarted ? (
-          <motion.div
-            key="landing"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="w-full h-screen"
-          >
-            <LandingPage onStart={handleStart} />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="quiz"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="w-full h-screen"
-          >
-            <BackgroundScene currentPage={currentQuestionIndex} />
-            
-            <main className="relative z-10 container mx-auto h-screen">
-              <div className="grid grid-cols-3 h-full">
-                <div className="flex items-center justify-center">
-                  <VideoAvatar videoName="avatar.mp4" />
-                </div>
-                
-                <div className="col-span-2 flex items-center justify-center">
-                  {!isInitialLoading && (
-                    <>
-                      {/* Timer */}
-                      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
-                        <Timer 
-                          timeLeft={timeLeft}
-                          totalTime={10}
-                          isVisible={!isSubmitted && !isPaused}
-                        />
-                      </div>
-                      
-                      <div className="relative w-full max-w-md">
-                        {/* Progress Bar */}
-                        <motion.div 
-                          className="absolute -top-4 left-0 w-full h-1 bg-gray-200/30 rounded-full overflow-hidden"
-                        >
-                          <motion.div 
-                            className="h-full bg-blue-500"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progress}%` }}
-                            transition={{ duration: 0.3 }}
-                          />
-                        </motion.div>
-  
-                        {/* Question Display */}
-                        <AnimatePresence mode="wait">
-                          {!isSubmitted && (
-                            <QuizBox
-                              key={currentQuestionIndex}
-                              question={QUIZ_QUESTIONS[currentQuestionIndex].question}
-                              options={QUIZ_QUESTIONS[currentQuestionIndex].options}
-                              selectedAnswer={selectedAnswer}
-                              onSelect={handleAnswerSelect}
-                              direction={1}
-                            />
-                          )}
-  
-                          {showResults && (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col items-center justify-center gap-4"
-    >
-      <h2 className="text-2xl font-bold text-gray-800">Quiz Results!</h2>
-      <div className="bg-white/30 backdrop-blur-md p-6 rounded-xl border border-white/20">
-        <h3 className="text-xl font-semibold mb-4">Your Personality Scores:</h3>
-        {Object.entries(finalScores).map(([category, score]) => (
-          <div key={category} className="flex justify-between mb-2">
-            <span>{category}</span>
-            <span>{score}</span>
-          </div>
-        ))}
-      </div>
-      <button
-        onClick={() => router.push('/results')}
-        className="px-8 py-4 bg-white/30 backdrop-blur-md rounded-xl
-                   text-gray-800 font-semibold border border-white/20
-                   hover:bg-white/40 transition-all duration-300"
-      >
-        Lihat Detail Hasil
-      </button>
-    </motion.div>
-  )}
-                        </AnimatePresence>
-  
-                        {/* Manual Next Button */}
-                        {!isSubmitted && selectedAnswer && (
-                          <motion.button
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="mt-4 px-6 py-3 bg-blue-500 text-white rounded-lg w-full"
-                            onClick={handleNextQuestion}
-                          >
-                            pencet ini klo males nunggu akwoakwoka (buat testing)
-                          </motion.button>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </main>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {quizState === 'notStarted' ? (
+        <LandingPage onStart={handleStart} />
+      ) : (
+        <QuizContent
+          currentQuestionIndex={currentQuestionIndex}
+          timeLeft={timeLeft}
+          selectedAnswer={selectedAnswer}
+          onAnswerSelect={handleAnswerSelect}
+          onNextQuestion={proceedToNextQuestion}
+          quizState={quizState}
+          finalScores={finalScores}
+        />
+      )}
     </div>
   );
 }
