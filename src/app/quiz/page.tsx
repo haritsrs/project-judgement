@@ -124,6 +124,12 @@ const QUIZ_SCORING = [
   }
 ];
 
+const findTopPersonalityType = (scores: Record<string, number>): string => {
+  return Object.entries(scores)
+    .reduce((a, b) => b[1] > a[1] ? b : a)[0]
+    .toLowerCase();
+};
+
 const IntroVideo = () => {
   return (
     <video 
@@ -570,7 +576,7 @@ export default function Home() {
       console.error("Error submitting response:", error);
     }
   };
-  
+
   useEffect(() => {
     // Only run timer when quiz is in progress and time is left
     if (quizState !== 'inProgress') return;
