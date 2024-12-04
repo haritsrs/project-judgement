@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../../../firebase';
 import { collection, addDoc } from 'firebase/firestore';
@@ -130,15 +130,62 @@ const findTopPersonalityType = (scores: Record<string, number>): string => {
     .toLowerCase();
 };
 
-const IntroVideo = () => {
+const VideoPlayer = ({ src, onVideoEnd, onQuizStart }: { 
+  src: string; 
+  onVideoEnd: () => void; 
+  onQuizStart: () => void 
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const quizTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (videoElement) {
+      videoElement.play().catch(error => {
+        console.error("Error playing video:", error);
+        onVideoEnd();
+      });
+
+      // Set timer for quiz start at 13 seconds
+      quizTimerRef.current = setTimeout(() => {
+        onQuizStart();
+      }, 13000);
+
+      // Set the timeout to 32 seconds for video end
+      timerRef.current = setTimeout(() => {
+        onVideoEnd();
+      }, 32000); // 32 seconds
+
+      // Listen for the video ended event
+      const handleEnded = () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        if (quizTimerRef.current) clearTimeout(quizTimerRef.current);
+        onVideoEnd();
+      };
+
+      videoElement.addEventListener('ended', handleEnded);
+
+      return () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+        if (quizTimerRef.current) {
+          clearTimeout(quizTimerRef.current);
+        }
+        videoElement.removeEventListener('ended', handleEnded);
+      };
+    }
+  }, [onVideoEnd, onQuizStart]);
+
   return (
     <video 
+      ref={videoRef}
       className="fixed inset-0 w-full h-full object-cover"
-      autoPlay
       muted
       playsInline
     >
-      <source src="/pembuka.mp4" type="video/mp4" />
+      <source src={src} type="video/mp4" />
     </video>
   );
 };
@@ -168,20 +215,12 @@ const BackgroundVideo = () => {
 const LandingPage = ({ onStart }: { onStart: (name: string, phone: string) => void }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [isValid, setIsValid] = useState(false);
+  const isValid = useMemo(() => name.length >= 2 && phone.length >= 10, [name, phone]);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowForm(true);
-    }, 32000);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    setIsValid(name.length >= 2 && phone.length >= 10);
-  }, [name, phone]);
+  const handleInitialStart = () => {
+    setShowForm(true);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,71 +230,85 @@ const LandingPage = ({ onStart }: { onStart: (name: string, phone: string) => vo
   };
 
   return (
-    <>
-      <IntroVideo />
-      <AnimatePresence>
-        {showForm && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center z-10 bg-black/50"
-          >
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="w-full max-w-md"
-            >
-              <div className="backdrop-blur-lg bg-white/30 p-8 rounded-2xl shadow-lg border border-white/20">
-                <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Welcome to the Quiz!</h1>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div>
-                    <label className="block text-gray-800 mb-2 font-medium">Name</label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/50 border border-white/20 
-                               focus:outline-none focus:ring-2 focus:ring-blue-500 
-                               placeholder-gray-500 text-gray-800"
-                      placeholder="Enter your name"
-                      minLength={2}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-800 mb-2 font-medium">Phone Number</label>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/50 border border-white/20 
-                               focus:outline-none focus:ring-2 focus:ring-blue-500 
-                               placeholder-gray-500 text-gray-800"
-                      placeholder="Enter your phone number"
-                      minLength={10}
-                      required
-                    />
-                  </div>
+    <div className="relative h-screen w-full overflow-hidden">
+      <VideoPlayer src="/lobby.mp4" onVideoEnd={() => { } } onQuizStart={function (): void {
+        throw new Error('Function not implemented.');
+      } } />
 
-                  <motion.button
-                    type="submit"
-                    className={`w-full py-4 rounded-xl font-semibold text-white
-                              transition-all duration-300 ${isValid ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400'}`}
-                    whileHover={isValid ? { scale: 1.02 } : {}}
-                    whileTap={isValid ? { scale: 0.98 } : {}}
-                    disabled={!isValid}
-                  >
-                    Start Quiz
-                  </motion.button>
-                </form>
+      <div className="absolute top-0 left-0 w-full h-full bg-black/50" />
+
+      {!showForm && (
+        <div 
+          onClick={handleInitialStart}
+          className="absolute inset-0 z-20 flex items-center justify-center cursor-pointer"
+        >
+          <div className="text-white text-2xl font-bold 
+            opacity-70 animate-pulse 
+            transition-opacity duration-500"
+          >
+            Click Anywhere to Start
+          </div>
+        </div>
+      )}
+
+      {showForm && (
+        <motion.div 
+          className="fixed inset-0 flex items-center justify-center z-30 bg-black/50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <motion.div 
+            className="backdrop-blur-lg bg-white/30 p-8 rounded-2xl shadow-lg border border-white/20 w-full max-w-md"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Enter Your Details</h1>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-gray-800 mb-2 font-medium">Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-white/50 border border-white/20 
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 
+                             placeholder-gray-500 text-gray-800"
+                  placeholder="Enter your name"
+                  minLength={2}
+                  required
+                />
               </div>
-            </motion.div>
+              
+              <div>
+                <label className="block text-gray-800 mb-2 font-medium">Phone Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-white/50 border border-white/20 
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 
+                             placeholder-gray-500 text-gray-800"
+                  placeholder="Enter your phone number"
+                  minLength={10}
+                  required
+                />
+              </div>
+
+              <motion.button
+                type="submit"
+                className={`w-full py-4 rounded-xl font-semibold text-white
+                            transition-all duration-300 ${isValid ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400'}`}
+                whileHover={isValid ? { scale: 1.02 } : {}}
+                whileTap={isValid ? { scale: 0.98 } : {}}
+                disabled={!isValid}
+              >
+                Start Quiz
+              </motion.button>
+            </form>
           </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+        </motion.div>
+      )}
+    </div>
   );
 };
 
@@ -389,33 +442,31 @@ const QuizBox = ({
 };
 
 const calculateScores = (answers: Record<number, string>) => {
-  const scores = { ...INITIAL_SCORES };
-
-  QUIZ_QUESTIONS.forEach((question, index) => {
-    const scoringData = QUIZ_SCORING[index];
+  return QUIZ_QUESTIONS.reduce((scores, question, index) => {
     const selectedAnswer = answers[index];
-    
-    const selectedOption = scoringData.options.find(opt => opt.value === selectedAnswer);
+    const selectedOption = QUIZ_SCORING[index].options.find(opt => opt.value === selectedAnswer);
     
     if (selectedOption) {
       Object.entries(selectedOption.scores).forEach(([category, points]) => {
         scores[category as keyof typeof INITIAL_SCORES] += points;
       });
     }
-  });
-
-  return scores;
+    return scores;
+  }, { ...INITIAL_SCORES });
 };
 
 const QuizContent = ({ 
+  userData, 
   currentQuestionIndex, 
   timeLeft, 
   selectedAnswer, 
   onAnswerSelect, 
   onNextQuestion, 
   quizState, 
-  finalScores 
+  finalScores,
+  answers 
 }: {
+  userData: { name: string; phone: string };
   currentQuestionIndex: number;
   timeLeft: number;
   selectedAnswer: string | null;
@@ -423,6 +474,7 @@ const QuizContent = ({
   onNextQuestion: () => void;
   quizState: 'notStarted' | 'inProgress' | 'submitted';
   finalScores: Record<string, number>;
+  answers: Record<number, string>;
 }) => {
   const router = useRouter();
 
@@ -515,20 +567,39 @@ export default function Home() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState(10);
-  const [quizState, setQuizState] = useState<'notStarted' | 'inProgress' | 'submitted'>('notStarted');
+  const [timeLeft, setTimeLeft] = useState(50);
+  const [quizState, setQuizState] = useState<'notStarted' | 'videoIntro' | 'quizVideo' | 'inProgress' | 'submitted'>('notStarted');
   const [finalScores, setFinalScores] = useState(INITIAL_SCORES);
   const [userData, setUserData] = useState({ name: '', phone: '' });
-
-  // Handle quiz start
+  const [canPlayVideo, setCanPlayVideo] = useState(false);
+  
   const handleStart = (name: string, phone: string) => {
+    if (!name || !phone) {
+      alert('Please enter both name and phone number');
+      return;
+    }
+
     setUserData({ name, phone });
-    setQuizState('inProgress');
+    setQuizState('videoIntro');
+    setTimeLeft(50);
+    setCanPlayVideo(true);
   };
 
-  // Comprehensive question navigation logic
+  const handlePembukaVideoEnd = () => {
+    setQuizState('quizVideo');
+  };
+
+  const handleQuizStart = () => {
+    setQuizState('inProgress');
+    setTimeLeft(10);
+  };
+
+  const handleQuisisionerVideoEnd = () => {
+    setQuizState('inProgress');
+    setTimeLeft(10);
+  };
+
   const proceedToNextQuestion = () => {
-    // Ensure an answer is recorded if not already selected
     if (!answers[currentQuestionIndex]) {
       setAnswers(prev => ({
         ...prev,
@@ -536,32 +607,25 @@ export default function Home() {
       }));
     }
 
-    // Check if this is the last question
     if (currentQuestionIndex < QUIZ_QUESTIONS.length - 1) {
-      // Move to next question
       setCurrentQuestionIndex(prev => prev + 1);
       setSelectedAnswer(null);
       setTimeLeft(10);
     } else {
-      // Quiz is complete
       finishQuiz();
     }
   };
 
-  // Quiz completion logic
   const finishQuiz = async () => {
     try {
-      // Ensure final answer is recorded
       const completeAnswers = {
         ...answers,
         [currentQuestionIndex]: selectedAnswer || 'No answer'
       };
 
-      // Calculate scores
       const calculatedScores = calculateScores(completeAnswers);
       setFinalScores(calculatedScores);
 
-      // Submit to Firestore
       await addDoc(collection(db, "quiz-responses"), {
         name: userData.name,
         phone: userData.phone,
@@ -570,7 +634,6 @@ export default function Home() {
         timestamp: new Date(),
       });
 
-      // Update quiz state
       setQuizState('submitted');
     } catch (error) {
       console.error("Error submitting response:", error);
@@ -578,24 +641,30 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // Only run timer when quiz is in progress and time is left
-    if (quizState !== 'inProgress') return;
-  
-    const timerId = setInterval(() => {
-      setTimeLeft(currentTime => {
-        if (currentTime <= 1) {
-          proceedToNextQuestion();
-          return 10; // Reset timer
-        }
-        return currentTime - 1;
-      });
-    }, 1000);
-  
-    // Cleanup timer
-    return () => clearInterval(timerId);
-  }, [quizState, proceedToNextQuestion]);
+    let timerId: NodeJS.Timeout;
 
-  // Answer selection handler
+    if (quizState === 'videoIntro' || quizState === 'inProgress') {
+      timerId = setInterval(() => {
+        setTimeLeft(currentTime => {
+          if (currentTime <= 1) {
+            if (quizState === 'videoIntro') {
+              setQuizState('inProgress');
+              return 10;
+            } else if (quizState === 'inProgress') {
+              proceedToNextQuestion();
+              return 10;
+            }
+          }
+          return currentTime - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timerId) clearInterval(timerId);
+    };
+  }, [quizState]);
+
   const handleAnswerSelect = (answer: string) => {
     setSelectedAnswer(answer);
     setAnswers(prev => ({
@@ -604,20 +673,43 @@ export default function Home() {
     }));
   };
 
+ 
   return (
     <div className="min-h-screen relative overflow-hidden">
       {quizState === 'notStarted' ? (
         <LandingPage onStart={handleStart} />
       ) : (
-        <QuizContent
-          currentQuestionIndex={currentQuestionIndex}
-          timeLeft={timeLeft}
-          selectedAnswer={selectedAnswer}
-          onAnswerSelect={handleAnswerSelect}
-          onNextQuestion={proceedToNextQuestion}
-          quizState={quizState}
-          finalScores={finalScores}
-        />
+        <>
+          {quizState === 'videoIntro' && (
+            <VideoPlayer 
+              src="/pembuka.mp4" 
+              onVideoEnd={handlePembukaVideoEnd}
+              onQuizStart={() => {}} // No-op for pembuka video
+            />
+          )}
+          
+          {quizState === 'quizVideo' && (
+            <VideoPlayer 
+              src="/quisioner.mp4" 
+              onVideoEnd={handleQuisisionerVideoEnd}
+              onQuizStart={handleQuizStart}
+            />
+          )}
+          
+          {(quizState === 'inProgress' || quizState === 'submitted') && (
+            <QuizContent
+              userData={userData}
+              currentQuestionIndex={currentQuestionIndex}
+              timeLeft={timeLeft}
+              selectedAnswer={selectedAnswer}
+              onAnswerSelect={handleAnswerSelect}
+              onNextQuestion={proceedToNextQuestion}
+              quizState={quizState}
+              finalScores={finalScores}
+              answers={answers}
+            />
+          )}
+        </>
       )}
     </div>
   );
