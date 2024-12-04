@@ -130,10 +130,11 @@ const findTopPersonalityType = (scores: Record<string, number>): string => {
     .toLowerCase();
 };
 
-const VideoPlayer = ({ src, onVideoEnd, onQuizStart }: { 
+const VideoPlayer = ({ src, onVideoEnd, onQuizStart, loop }: { 
   src: string; 
   onVideoEnd: () => void; 
-  onQuizStart: () => void 
+  onQuizStart: () => void; 
+  loop?: boolean; // Add loop prop
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -184,6 +185,7 @@ const VideoPlayer = ({ src, onVideoEnd, onQuizStart }: {
       className="fixed inset-0 w-full h-full object-cover"
       muted
       playsInline
+      loop={loop} // Set loop attribute based on the prop
     >
       <source src={src} type="video/mp4" />
     </video>
@@ -207,7 +209,7 @@ const BackgroundVideo = () => {
       muted
       playsInline
     >
-      <source src="/quisioner.mp4" type="video/mp4" />
+      <source src="/quisionerpt2.mp4" type="video/mp4" />
     </video>
   );
 };
@@ -690,13 +692,35 @@ export default function Home() {
           
           {quizState === 'quizVideo' && (
             <VideoPlayer 
-              src="/quisioner.mp4" 
+              src="/quisionerpt1.mp4" 
               onVideoEnd={handleQuisisionerVideoEnd}
               onQuizStart={handleQuizStart}
             />
           )}
           
-          {(quizState === 'inProgress' || quizState === 'submitted') && (
+          {quizState === 'inProgress' && (
+            <>
+              <VideoPlayer 
+                src="/quisionerpt2.mp4" // Replace with your actual in-progress video source
+                onVideoEnd={() => {}} // No-op for in-progress video
+                onQuizStart={() => {}} // No-op for in-progress video
+                loop={true} // Set loop to true
+              />
+              <QuizContent
+                userData={userData}
+                currentQuestionIndex={currentQuestionIndex}
+                timeLeft={timeLeft}
+                selectedAnswer={selectedAnswer}
+                onAnswerSelect={handleAnswerSelect}
+                onNextQuestion={proceedToNextQuestion}
+                quizState={quizState}
+                finalScores={finalScores}
+                answers={answers}
+              />
+            </>
+          )}
+          
+          {quizState === 'submitted' && (
             <QuizContent
               userData={userData}
               currentQuestionIndex={currentQuestionIndex}
