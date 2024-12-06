@@ -657,20 +657,40 @@ export default function Home() {
         ...answers,
         [currentQuestionIndex]: selectedAnswer || 'No answer'
       };
-
+  
       const calculatedScores = calculateScores(completeAnswers);
       setFinalScores(calculatedScores);
-
+  
+      // Determine the top personality type
+      const topPersonalityType = findTopPersonalityType(calculatedScores).toUpperCase();
+  
       await addDoc(collection(db, "quiz-responses"), {
         name: userData.name,
         phone: userData.phone,
         gender: userData.gender,
         answers: completeAnswers,
         scores: calculatedScores,
+        personalityType: topPersonalityType,
         timestamp: new Date(),
       });
-
-      setQuizState('submitted');
+  
+      // Route based on personality type and gender
+      const personalityRoutes: Record<string, Record<string, string>> = {
+        'NR': { 'Male': '/results/nr/l', 'Female': '/results/nr/p' },
+        'WB': { 'Male': '/results/wb/l', 'Female': '/results/wb/p' },
+        'SB': { 'Male': '/results/sb/l', 'Female': '/results/sb/p' },
+        'JM': { 'Male': '/results/jm/l', 'Female': '/results/jm/p' },
+        'SN': { 'Male': '/results/sn/l', 'Female': '/results/sn/p' },
+        'BB': { 'Male': '/results/bb/l', 'Female': '/results/bb/p' },
+        'SR': { 'Male': '/results/sr/l', 'Female': '/results/sr/p' }
+      };
+  
+      // Get the specific route based on personality type and gender
+      const route = personalityRoutes[topPersonalityType]?.[userData.gender] || '/results';
+  
+      // Navigate to the specific results page
+      router.push(route);
+  
     } catch (error) {
       console.error("Error submitting response:", error);
     }
