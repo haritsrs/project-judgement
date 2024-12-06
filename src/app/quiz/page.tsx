@@ -214,10 +214,18 @@ const BackgroundVideo = () => {
   );
 };
 
-const LandingPage = ({ onStart }: { onStart: (name: string, phone: string) => void }) => {
+const LandingPage = ({ onStart }: { onStart: (name: string, phone: string, gender: string) => void }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const isValid = useMemo(() => name.length >= 2 && phone.length >= 10, [name, phone]);
+  const [gender, setGender] = useState('');
+  
+  const isValid = useMemo(() => 
+    name.length >= 2 && 
+    phone.length >= 10 && 
+    gender !== '', 
+    [name, phone, gender]
+  );
+  
   const [showForm, setShowForm] = useState(false);
 
   const handleInitialStart = () => {
@@ -227,7 +235,7 @@ const LandingPage = ({ onStart }: { onStart: (name: string, phone: string) => vo
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isValid) {
-      onStart(name, phone);
+      onStart(name, phone, gender);
     }
   };
 
@@ -294,6 +302,31 @@ const LandingPage = ({ onStart }: { onStart: (name: string, phone: string) => vo
                   minLength={10}
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-gray-800 mb-2 font-medium">Gender</label>
+                <div className="flex space-x-4">
+                  {['Male', 'Female'].map((genderOption) => (
+                    <motion.button
+                      key={genderOption}
+                      type="button"
+                      onClick={() => setGender(genderOption)}
+                      className={`w-full p-4 rounded-xl transition-all duration-300
+                        backdrop-blur-md border border-white/20
+                        hover:${THEME.hoverButton} hover:shadow-lg hover:scale-[1.02]
+                        active:scale-[0.98] text-gray-800 font-medium
+                        ${gender === genderOption ? THEME.selectedButton : THEME.defaultButton}`}
+                      whileTap={{ scale: 0.98 }}
+                      animate={{
+                        backgroundColor: gender === genderOption ? 'rgba(59, 130, 246, 0.5)' : 'rgba(255, 255, 255, 0.2)'
+                      }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {genderOption}
+                    </motion.button>
+                  ))}
+                </div>
               </div>
 
               <motion.button
@@ -572,16 +605,16 @@ export default function Home() {
   const [timeLeft, setTimeLeft] = useState(50);
   const [quizState, setQuizState] = useState<'notStarted' | 'videoIntro' | 'quizVideo' | 'inProgress' | 'submitted'>('notStarted');
   const [finalScores, setFinalScores] = useState(INITIAL_SCORES);
-  const [userData, setUserData] = useState({ name: '', phone: '' });
+  const [userData, setUserData] = useState({ name: '', phone: '', gender: '' });
   const [canPlayVideo, setCanPlayVideo] = useState(false);
   
-  const handleStart = (name: string, phone: string) => {
-    if (!name || !phone) {
-      alert('Please enter both name and phone number');
+  const handleStart = (name: string, phone: string, gender: string) => {
+    if (!name || !phone || !gender) {
+      alert('Please enter name, phone number, and select gender');
       return;
     }
-
-    setUserData({ name, phone });
+  
+    setUserData({ name, phone, gender }); // Add gender to userData
     setQuizState('videoIntro');
     setTimeLeft(50);
     setCanPlayVideo(true);
@@ -631,6 +664,7 @@ export default function Home() {
       await addDoc(collection(db, "quiz-responses"), {
         name: userData.name,
         phone: userData.phone,
+        gender: userData.gender,
         answers: completeAnswers,
         scores: calculatedScores,
         timestamp: new Date(),
