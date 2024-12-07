@@ -4,21 +4,20 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Webcam from 'react-webcam';
-import { collection, query, where, orderBy, limit, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../../../firebase';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export default function ResultsPage() {
   const router = useRouter();
-  const stages = ['video', 'results'] as const;
+  
+  type Stage = 'video' | 'results' | 'thankyou';
   const [stage, setStage] = useState<Stage>('video');
+  
   const webcamRef = useRef<Webcam>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isWebcamReady, setIsWebcamReady] = useState(false);
   const [showSkipButton, setShowSkipButton] = useState(false);
-  const [avatarConfirmation, setAvatarConfirmation] = useState<'Sudah' | 'Belum' | null>(null);
-
-  type Stage = typeof stages[number];
   
   // Webcam setup and permissions
   useEffect(() => {
@@ -66,8 +65,8 @@ export default function ResultsPage() {
           avatarConfirmationTimestamp: serverTimestamp()
         });
         
-        // Return to main page after submission
-        router.push('/');
+        // Move to thank you stage
+        setStage('thankyou');
       } else {
         console.error("No quiz document found");
       }
@@ -82,7 +81,7 @@ export default function ResultsPage() {
       <div className="fixed inset-0 w-screen h-screen bg-black">
         <video
           ref={videoRef}
-          src="/videos/p/sn.mp4"
+          src="/videos/p/sb.mp4"
           className="w-full h-full object-cover"
           onEnded={() => setStage('results')}
           autoPlay
@@ -104,73 +103,99 @@ export default function ResultsPage() {
     );
   }
 
-// Results stage
-if (stage === 'results') {
-  return (
-    <div className="fixed inset-0 flex bg-black">
-      {/* Left side - Picture */}
-      <div className="w-1/2 bg-gray-900 flex items-center justify-center relative">
-        <Image 
-          src="/images/p/sn.png" 
-          alt="result"
-          fill
-          priority
-          className="object-contain"
-        />
-      </div>
-
-      {/* Right side - Webcam */}
-      <div className="w-1/2 bg-black flex items-center justify-center relative">
-        {isWebcamReady ? (
-          <Webcam
-            ref={webcamRef}
-            audio={false}
-            videoConstraints={{
-              width: 1280,
-              height: 720,
-              facingMode: "user"
-            }}
-            className="w-full h-full object-cover"
-            mirrored={true}
+  // Results stage
+  if (stage === 'results') {
+    return (
+      <div className="fixed inset-0 flex bg-black">
+        {/* Left side - Picture */}
+        <div className="w-1/2 bg-gray-900 flex items-center justify-center relative">
+          <Image 
+            src="/images/p/sb.png" 
+            alt="result"
+            fill
+            priority
+            className="object-contain"
           />
-        ) : (
-          <div className="text-white">
-            Webcam not available. Please check your camera permissions.
-          </div>
-        )}
-      </div>
-
-      {/* Confirmation Overlay - Centered at the bottom */}
-      <motion.div 
-        className="fixed bottom-0 left-0 right-0 z-50 pb-8 flex justify-center"
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="bg-black/20 backdrop-blur-lg rounded-2xl p-6 w-full max-w-md">
-          <h2 className="text-white text-center text-xl mb-4">
-            Apakah avatarnya sudah cocok dengan penampilanmu?
-          </h2>
-          
-          <div className="flex justify-center space-x-4">
-            <button 
-              onClick={() => handleSubmit('Belum')}
-              className="flex-1 bg-red-900/70 text-white px-6 py-3 rounded-xl hover:bg-red-500/90 transition"
-            >
-              Belum
-            </button>
-            <button 
-              onClick={() => handleSubmit('Sudah')}
-              className="flex-1 bg-green-900/70 text-white px-6 py-3 rounded-xl hover:bg-green-500/90 transition"
-            >
-              Sudah
-            </button>
-          </div>
         </div>
+
+        {/* Right side - Webcam */}
+        <div className="w-1/2 bg-black flex items-center justify-center relative">
+          {isWebcamReady ? (
+            <Webcam
+              ref={webcamRef}
+              audio={false}
+              videoConstraints={{
+                width: 1280,
+                height: 720,
+                facingMode: "user"
+              }}
+              className="w-full h-full object-cover"
+              mirrored={true}
+            />
+          ) : (
+            <div className="text-white">
+              Webcam not available. Please check your camera permissions.
+            </div>
+          )}
+        </div>
+
+        {/* Confirmation Overlay - Centered at the bottom */}
+        <motion.div 
+          className="fixed bottom-0 left-0 right-0 z-50 pb-8 flex justify-center"
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="bg-black/20 backdrop-blur-lg rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-white text-center text-xl mb-4">
+              Apakah avatarnya sudah cocok dengan penampilanmu?
+            </h2>
+            
+            <div className="flex justify-center space-x-4">
+              <button 
+                onClick={() => handleSubmit('Belum')}
+                className="flex-1 bg-red-900/70 text-white px-6 py-3 rounded-xl hover:bg-red-500/90 transition"
+              >
+                Belum
+              </button>
+              <button 
+                onClick={() => handleSubmit('Sudah')}
+                className="flex-1 bg-green-900/70 text-white px-6 py-3 rounded-xl hover:bg-green-500/90 transition"
+              >
+                Sudah
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Thank You stage
+  if (stage === 'thankyou') {
+    return (
+      <motion.div 
+        className="fixed inset-0 bg-black flex flex-col items-center justify-center text-white"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h1 className="text-4xl font-bold mb-8 text-center">
+          Terima Kasih!
+        </h1>
+        
+        <motion.button 
+          onClick={() => router.push('/')}
+          className="bg-white/20 text-white px-8 py-4 rounded-xl hover:bg-white/30 transition"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          Kembali ke Halaman Utama
+        </motion.button>
       </motion.div>
-    </div>
-  );
-}
+    );
+  }
+
   // Fallback return (should never reach here)
   return null;
 }

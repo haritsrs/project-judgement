@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../../firebase';
 import { collection, addDoc } from 'firebase/firestore';
@@ -192,27 +192,7 @@ const VideoPlayer = ({ src, onVideoEnd, onQuizStart, loop }: {
   );
 };
 
-const BackgroundVideo = () => {
-  const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) return null;
-
-  return (
-    <video 
-      className="w-full h-full object-cover"
-      autoPlay
-      loop
-      muted
-      playsInline
-    >
-      <source src="/quisionerpt2.mp4" type="video/mp4" />
-    </video>
-  );
-};
 
 const LandingPage = ({ onStart }: { onStart: (name: string, phone: string, gender: string) => void }) => {
   const [name, setName] = useState('');
@@ -347,63 +327,6 @@ const LandingPage = ({ onStart }: { onStart: (name: string, phone: string, gende
   );
 };
 
-const BackgroundScene = ({ currentPage }: { currentPage: number }) => {
-  return (
-    <motion.div 
-      className="fixed inset-0"
-      animate={{
-        backgroundColor: [
-          'rgba(147, 51, 234, 0.5)',  // purple
-          'rgba(236, 72, 153, 0.5)',   // pink
-          'rgba(96, 165, 250, 0.5)'    // blue
-        ][currentPage % 3]
-      }}
-      transition={{ duration: 0.8 }}
-    >
-      <div className="absolute inset-0">
-        <BackgroundVideo />
-      </div>
-      <div className="absolute inset-0 bg-black/20" />
-    </motion.div>
-  );
-};
-
-interface TimerProps {
-  timeLeft: number;
-  totalTime: number;
-  isVisible: boolean;
-}
-
-const Timer: React.FC<TimerProps> = ({ timeLeft, totalTime, isVisible }) => {
-  if (!isVisible) return null;
-
-  const progress = (timeLeft / totalTime) * 100;
-
-  return (
-    <motion.div
-      className={`absolute top-4 left-1/2 -translate-x-1/2 ${THEME.timer.background} backdrop-blur-md px-6 py-3 rounded-full border border-white/20`}
-      initial={{ y: -50, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-    >
-      <div className="relative flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className={`text-2xl font-bold ${THEME.timer.text}`}>{timeLeft}</span>
-        </div>
-
-        <div className={`w-32 h-2 rounded-full ${THEME.timer.bar.background}`}>
-          <motion.div
-            className={`h-full rounded-full ${THEME.timer.bar.fill}`}
-            initial={{ width: '100%' }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.3, ease: "linear" }}
-          />
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
 const QuizBox = ({ 
   question, 
   options,
@@ -493,14 +416,12 @@ const calculateScores = (answers: Record<number, string>) => {
 };
 
 const QuizContent = ({ 
-  userData, 
   currentQuestionIndex, 
   selectedAnswer, 
   onAnswerSelect, 
   onNextQuestion, 
   quizState, 
-  finalScores,
-  answers 
+  finalScores, 
 }: {
   userData: { name: string; phone: string };
   currentQuestionIndex: number;
@@ -582,7 +503,6 @@ export default function Home() {
   const [quizState, setQuizState] = useState<'notStarted' | 'videoIntro' | 'quizVideo' | 'inProgress' | 'submitted'>('notStarted');
   const [finalScores, setFinalScores] = useState(INITIAL_SCORES);
   const [userData, setUserData] = useState({ name: '', phone: '', gender: '' });
-  const [canPlayVideo, setCanPlayVideo] = useState(false);
   
   const handleStart = (name: string, phone: string, gender: string) => {
     if (!name || !phone || !gender) {
@@ -592,7 +512,6 @@ export default function Home() {
   
     setUserData({ name, phone, gender }); // Add gender to userData
     setQuizState('videoIntro');
-    setCanPlayVideo(true);
   };
 
   const handlePembukaVideoEnd = () => {
