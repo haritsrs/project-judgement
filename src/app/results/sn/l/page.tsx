@@ -81,7 +81,7 @@ export default function ResultsPage() {
       <div className="fixed inset-0 w-screen h-screen bg-black">
         <video
           ref={videoRef}
-          src="/videos/l/bb.mp4"
+          src="/videos/l/sn.mp4"
           className="w-full h-full object-cover"
           onEnded={() => setStage('results')}
           autoPlay

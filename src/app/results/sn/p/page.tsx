@@ -81,7 +81,7 @@ export default function ResultsPage() {
       <div className="fixed inset-0 w-screen h-screen bg-black">
         <video
           ref={videoRef}
-          src="/videos/p/sb.mp4"
+          src="/videos/p/sn.mp4"
           className="w-full h-full object-cover"
           onEnded={() => setStage('results')}
           autoPlay
@@ -110,7 +110,7 @@ export default function ResultsPage() {
         {/* Left side - Picture */}
         <div className="w-1/2 bg-gray-900 flex items-center justify-center relative">
           <Image 
-            src="/images/p/sb.png" 
+            src="/images/p/sn.png" 
             alt="result"
             fill
             priority
