@@ -1,1 +1,1 @@
-Quiz Personality
+Quiz Personality Project
